@@ -1,40 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 import IngredientList from './IngredientList';
+import ErrorModal from '../UI/ErrorModal';
 
 const Ingredients = () => {
   const [userIngredients, setUserIngredients] = useState([]);
-
-  useEffect(() => {
-    fetch(
-      'https://react-http-459a2-default-rtdb.firebaseio.com/ingredients.json'
-    )
-      .then((res) => {
-        return res.json();
-      })
-      .then((data) => {
-        const loadedIngredients = [];
-        for (const key in data) {
-          loadedIngredients.push({
-            id: key,
-            title: data[key].title,
-            amount: data[key].amount,
-          });
-        }
-        setUserIngredients(loadedIngredients);
-      });
-  }, []);
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
   useEffect(() => {
     console.log('렌더링됨', userIngredients);
   });
 
-  const filterIngredientsHandler = (filterIngredients) => {
+  const filterIngredientsHandler = useCallback((filterIngredients) => {
     setUserIngredients(filterIngredients);
-  };
+  }, []);
 
   const addIngredientHandler = (ingredient) => {
+    setIsLoading(true);
     fetch(
       'https://react-http-459a2-default-rtdb.firebaseio.com/ingredients.json',
       {
@@ -46,6 +29,7 @@ const Ingredients = () => {
       }
     )
       .then((res) => {
+        setIsLoading(false);
         return res.json();
       })
       .then((data) => {
@@ -55,15 +39,44 @@ const Ingredients = () => {
       });
   };
 
+  const removeIngredientHandler = (ingredientID) => {
+    setIsLoading(true);
+    fetch(
+      `https://react-http-459a2-default-rtdb.firebaseio.com/ingredients/${ingredientID}.jsssn`,
+      {
+        method: 'DELETE',
+      }
+    )
+      .then((res) => {
+        setIsLoading(false);
+        setUserIngredients((pre) => {
+          return pre.filter((el) => {
+            return el.id !== ingredientID;
+          });
+        });
+      })
+      .catch((err) => {
+        setIsLoading(false);
+        setError('somethis is wrong');
+      });
+  };
+
+  const clearError = () => {
+    setError(null);
+  };
   return (
     <div className='App'>
-      <IngredientForm onAddIngredient={addIngredientHandler} />
+      {error && <ErrorModal onClose={clearError}>{error}</ErrorModal>}
+      <IngredientForm
+        onAddIngredient={addIngredientHandler}
+        isLoading={isLoading}
+      />
 
       <section>
         <Search onLoadingIngredients={filterIngredientsHandler} />
         <IngredientList
           userIngredients={userIngredients}
-          onRemoveItem={() => {}}
+          onRemoveItem={removeIngredientHandler}
         ></IngredientList>
         {/* Need to add list here! */}
       </section>
